@@ -101,8 +101,8 @@ def perform_training(project_path, config):
         print(f"{config.number_of_columns} -> {config.latent_space_size} dimensions")
         assert number_of_columns == config.number_of_columns
 
-    print(config.latent_space_size)
-    print(config.number_of_columns)
+    #print(config.latent_space_size)
+    #print(config.number_of_columns)
 
     device = helper.get_device()
 
@@ -114,13 +114,13 @@ def perform_training(project_path, config):
     trained_model = helper.train(
         model, number_of_columns, train_set_norm, test_set_norm, output_path, config
     )
-
+    num = config.input_path.split("_")[-1][:-4]
     if config.apply_normalization:
         np.save(
-            project_path + "training/normalization_features.npy",
+            project_path + "training/normalization_features_"+num+".npy",
             normalization_features,
         )
-    helper.model_saver(trained_model, project_path + "compressed_output/model.pt")
+    helper.model_saver(trained_model, project_path + "compressed_output/model_"+num+".pt")
 
 def perform_diagnostics(project_path):
     print("Performing diagnostics...")
@@ -138,7 +138,8 @@ def perform_plotting(project_path, config):
         config (dataClass): Base class selecting user inputs
     """
     output_path = project_path + "plotting/"
-    helper.loss_plotter(project_path + "training/loss_data.npy", output_path, config)
+    num = config.input_path.split("_")[-1][:-4]
+    helper.loss_plotter(project_path + "training/loss_data_"+num+".npy", output_path, config)
     helper.plotter(project_path, config)
 
 
@@ -163,13 +164,14 @@ def perform_compression(project_path, config):
     start = time.time()
     normalization_features = []
 
+    num = config.input_path.split("_")[-1][:-4]
     if config.apply_normalization:
         normalization_features = np.load(
-            project_path + "training/normalization_features.npy"
+            project_path + "training/normalization_features_"+num+".npy"
         )
 
     compressed = helper.compress(
-        model_path=project_path + "compressed_output/model.pt", config=config
+        model_path=project_path + "compressed_output/model_"+num+".pt", config=config
     )
 
     end = time.time()
@@ -182,14 +184,14 @@ def perform_compression(project_path, config):
     
     if config.extra_compression:
         np.savez_compressed(
-            project_path + "compressed_output/compressed.npz",
+            project_path + "compressed_output/compressed_"+num+".npz",
             data=compressed,
             names=names,
             normalization_features=normalization_features,
         )
     else:
         np.savez(
-            project_path + "compressed_output/compressed.npz",
+            project_path + "compressed_output/compressed_"+num+".npz",
             data=compressed,
             names=names,
             normalization_features=normalization_features,
@@ -207,12 +209,12 @@ def perform_decompression(project_path, config):
         config (dataClass): Base class selecting user inputs
     """
     print("Decompressing...")
-    
+    num = config.input_path.split("_")[-1][:-4]
     start = time.time()
     model_name = config.model_name
     decompressed, names, normalization_features = helper.decompress(
-        model_path=project_path + "compressed_output/model.pt",
-        input_path=project_path + "compressed_output/compressed.npz",
+        model_path=project_path + "compressed_output/model_"+num+".pt",
+        input_path=project_path + "compressed_output/compressed_"+num+".npz",
         model_name=model_name,
         config=config,
     )
@@ -220,7 +222,7 @@ def perform_decompression(project_path, config):
     if config.apply_normalization:
         print("Un-normalizing...")
         normalization_features = np.load(
-            project_path + "training/normalization_features.npy"
+            project_path + "training/normalization_features_"+num+".npy"
         )
         decompressed = helper.renormalize(
             decompressed,
@@ -232,13 +234,13 @@ def perform_decompression(project_path, config):
 
     if config.extra_compression:
         np.savez_compressed(
-            project_path + "decompressed_output/decompressed.npz",
+            project_path + "decompressed_output/decompressed_"+num+".npz",
             data=decompressed,
             names=names,
         )
     else:
         np.savez(
-            project_path + "decompressed_output/decompressed.npz",
+            project_path + "decompressed_output/decompressed_"+num+".npz",
             data=decompressed,
             names=names,
         )
@@ -256,17 +258,18 @@ def print_info(project_path, config):
     )
 
     original = config.input_path
+    print(project_path)
     compressed_path = project_path + "compressed_output/"
     decompressed_path = project_path + "decompressed_output/"
     training_path = project_path + "training/"
-
-    model = compressed_path + "model.pt"
-    compressed = compressed_path + "compressed.npz"
-    decompressed = decompressed_path + "/decompressed.npz"
+    num = config.input_path.split("_")[-1][:-4]
+    model = compressed_path + "model_"+num+".pt"
+    compressed = compressed_path + "compressed_"+num+".npz"
+    decompressed = decompressed_path + "decompressed_"+num+".npz"
 
     meta_data = [
         model,
-        training_path + "loss_data.npy",
+        training_path + "loss_data_"+num+".npy",
         #training_path + "normalization_features.npy",
     ]
 
@@ -287,6 +290,7 @@ def print_info(project_path, config):
     print(f"Compressed file size: {round(file_stats[1], 4)} MB\n")
     print(f"De-compressed file size: {round(file_stats[2], 4)} MB\n")
     print(f"Compression ratio: {round(file_stats[0] / file_stats[1], 4)}\n")
+    np.savez(project_path+"compression_ratio",round(file_stats[0] / file_stats[1], 4))
     print(
         f"The meta-data saved has a total size of: {round(sum(meta_data_stats),4)} MB\n"
     )

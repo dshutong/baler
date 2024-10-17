@@ -53,7 +53,11 @@ def loss_plot(path_to_loss_data, output_path, config):
     plt.yscale("log")
     plt.ylabel("Loss")
     plt.legend(loc="best")
-    plt.savefig(output_path + "_Loss_plot.pdf")
+    #print(config.input_path)
+    num = config.input_path.split("_")[-1][:-4]
+    #print(num)
+    plt.savefig(output_path + "_Loss_plot_"+ num +".pdf")
+
     # plt.show()
 
 
@@ -258,62 +262,218 @@ def plot_2D(project_path, config):
     """
 
     #data = np.load(config.input_path)["data"]
-    data = np.load(config.input_path)["X"].transpose(0,2,1)
-    data_decompressed = np.load(project_path + "/decompressed_output/decompressed.npz")[
-        "data"
-    ]
+    data = np.load(config.input_path)["X"]
 
-    if data.shape[0] > 1:
-        num_tiles = data.shape[0]
-    else:
-        num_tiles = 1
+    num = config.input_path.split("_")[-1][:-4]
 
-    print("=== Plotting ===")
+    data_decompressed = np.load(project_path + "/decompressed_output/decompressed_"+num+".npz")["data"]
+    print(data_decompressed.shape)
+    
+    pt = data[:,:,0]
+    pad_start_indices = np.argmax(pt == 0, axis=1)
+    print(pad_start_indices)
 
-    for ind in trange(num_tiles):
-        tile_data_decompressed = data_decompressed[ind].reshape(
-            data_decompressed.shape[2], data_decompressed.shape[3]
-        )
-        tile_data = data[ind].reshape(data.shape[1], data.shape[2])
+    for i in range(data.shape[2]):  
+        for j, start in enumerate(pad_start_indices):
+            data_decompressed[j, i, start:] = 0
 
-        diff = ((tile_data_decompressed - tile_data) / tile_data) * 100
+    #data_decompressed = data_decompressed.reshape(data_decompressed.shape[0],
+    #        data_decompressed.shape[3], 
+    #        data_decompressed.shape[2]
+    #        )
+    
+    before = np.array([data[:,:,i].flatten() for i in range(4)])
+    after = np.array([data_decompressed[:,i,:].flatten() for i in range(4)])
+    #print(before.shape) #(4,nums)
+    #print(after.shape)
 
-        fig, axs = plt.subplots(
-            1, 3, figsize=(29.7 * (1 / 2.54), 21 * (1 / 2.54)), sharey=True
-        )
-        axs[0].set_title("Original", fontsize=11, y=-0.2)
-        im1 = axs[0].imshow(
-            tile_data, vmin=-0.01, vmax=0.07, cmap="CMRmap", interpolation="nearest"
-        )
-        cb2 = plt.colorbar(im1, ax=[axs[0]], location="top")
+    for i in range(after.shape[0]):
+        # delete the data where pt<=0:
+        after[i][after[0]<=0] = 0 
 
-        axs[1].set_title("Decompressed", fontsize=11, y=-0.2)
-        im2 = axs[1].imshow(
-            tile_data_decompressed,
-            vmin=-0.01,
-            vmax=0.07,
-            cmap="CMRmap",
-            interpolation="nearest",
-        )
-        cb2 = plt.colorbar(im2, ax=[axs[1]], location="top")
+    names = ["pt","y","phi","pid"]  #if it follows the docs
 
-        axs[2].set_title("Relative Diff. [%]", fontsize=11, y=-0.2)
-        im3 = axs[2].imshow(
-            diff, vmin=-50, vmax=50, cmap="cool_r", interpolation="nearest"
-        )
-        cb2 = plt.colorbar(im3, ax=[axs[2]], location="top")
+    index_to_cut = get_index_to_cut(0, 1e-6, before)
+    before = np.delete(before, index_to_cut, axis=1)
+    after = np.delete(after, index_to_cut, axis=1)
 
-        plt.ylim(0, 50)
-        plt.xlim(0, 50)
-        fig.suptitle(
-            "Compressed file is 10% the size of original,\n100 epochs (4.52 min)",
-            y=0.9,
-            fontsize=16,
-        )
+    response = np.divide(np.subtract(after, before), before) * 100
+    residual = np.subtract(after, before)
 
-        fig.savefig(
-            project_path + "/plotting/CFD" + str(ind) + ".jpg", bbox_inches="tight"
-        )
+    with PdfPages(project_path + "/plotting/comparison_"+ num + ".pdf") as pdf:
+        fig = plt.figure(constrained_layout=True, figsize=(10, 4))
+        subfigs = fig.subfigures(1, 2, wspace=0.07, width_ratios=[1, 1])
+
+        axsLeft = subfigs[0].subplots(2, 1, sharex=True)
+        ax1 = axsLeft[0]
+        ax3 = axsLeft[1]
+        axsRight = subfigs[1].subplots(2, 1, sharex=False)
+        ax2 = axsRight[0]
+        ax4 = axsRight[1]
+
+        number_of_columns = len(names)
+
+        print("=== Plotting ===")
+
+        for index, column in enumerate(tqdm(names)):
+            column_name = column
+            rms = np.sqrt(np.mean(np.square(response[index])))
+            residual_RMS = np.sqrt(np.mean(np.square(residual[index])))
+
+            x_min = min(before[index] + after[index])
+            x_max = max(before[index] + after[index])
+            x_diff = abs(x_max - x_min)
+
+            # Before Histogram
+            counts_before, bins_before = np.histogram(
+                before[index],
+                bins=np.linspace(x_min - 0.1 * x_diff, x_max + 0.1 * x_diff, 200),
+            )
+            ax1.hist(
+                bins_before[:-1], bins_before, weights=counts_before, label="Before"
+            )
+
+            # After Histogram
+            counts_after, bins_after = np.histogram(
+                after[index],
+                bins=np.linspace(x_min - 0.1 * x_diff, x_max + 0.1 * x_diff, 200),
+            )
+            ax1.hist(
+                bins_after[:-1],
+                bins_after,
+                weights=counts_after,
+                label="After",
+                histtype="step",
+            )
+
+            ax1.set_ylabel("Counts", ha="right", y=1.0)
+            ax1.set_yscale("log")
+            ax1.legend(loc="best")
+            ax1.set_xlim(x_min - 0.1 * x_diff, x_max + 0.1 * x_diff)
+            ax1.set_ylim(ymin=1)
+
+            data_bin_centers = bins_after[:-1] + (bins_after[1:] - bins_after[:-1]) / 2
+            ax3.scatter(
+                data_bin_centers, (counts_after - counts_before), marker="."
+            )  # FIXME: Dividing by zero
+            ax3.axhline(y=0, linewidth=0.2, color="black")
+            ax3.set_xlabel(f"{column_name}", ha="right", x=1.0)
+            ax3.set_ylim(
+                -max(counts_after - counts_before)
+                - 0.05 * max(counts_after - counts_before),
+                max(counts_after - counts_before)
+                + 0.05 * max(counts_after - counts_before),
+            )
+            ax3.set_ylabel("Residual")
+
+            # Response Histogram
+            counts_response, bins_response = np.histogram(
+                response[index], bins=np.arange(-20, 20, 0.2)
+            )
+            ax2.hist(
+                bins_response[:-1],
+                bins_response,
+                weights=counts_response,
+                label="Response",
+            )
+            ax2.axvline(
+                np.mean(response[index]),
+                color="k",
+                linestyle="dashed",
+                linewidth=1,
+                label=f"Mean {round(np.mean(response[index]),4)} %",
+            )
+            ax2.plot([], [], " ", label=f"RMS: {round(rms,4)} %")
+
+            ax2.set_xlabel(f"{column_name} Response [%]", ha="right", x=1.0)
+            ax2.set_ylabel("Counts", ha="right", y=1.0)
+            ax2.legend(loc="best", bbox_to_anchor=(1, 1.05))
+
+            # Residual Histogram
+            counts_residual, bins_residual = np.histogram(
+                residual[index], bins=np.arange(-1, 1, 0.01)
+            )
+            ax4.hist(
+                bins_residual[:-1],
+                bins_residual,
+                weights=counts_residual,
+                label="Residual",
+            )
+            ax4.axvline(
+                np.mean(residual[index]),
+                color="k",
+                linestyle="dashed",
+                linewidth=1,
+                label=f"Mean {round(np.mean(residual[index]),6)}",
+            )
+            ax4.plot([], [], " ", label=f"RMS: {round(residual_RMS,6)}")
+            ax4.plot([], [], " ", label=f"Max: {round(max(residual[index]),6)}")
+            ax4.plot([], [], " ", label=f"Min: {round(min(residual[index]),6)}")
+
+            ax4.set_xlabel(f"{column_name} Residual", ha="right", x=1.0)
+            ax4.set_ylabel("Counts", ha="right", y=1.0)
+            ax4.set_xlim(-1, 1)
+            ax4.legend(loc="best", bbox_to_anchor=(1, 1.05))
+
+            pdf.savefig()
+            ax2.clear()
+            ax1.clear()
+            ax3.clear()
+            ax4.clear()
+
+#    if data.shape[0] > 1:
+#        num_tiles = data.shape[0]
+#    else:
+#        num_tiles = 1
+#
+#    print("=== Plotting #===")
+#
+#    
+#    for ind in trange(num_tiles):
+#
+#        tile_data_decompressed = data_decompressed[ind].reshape(
+#            data_decompressed.shape[2], data_decompressed.shape[3]
+#        )
+#        tile_data = data[ind].reshape(data.shape[1], data.shape[2])
+#
+#        diff = ((tile_data_decompressed - tile_data) / tile_data) * 100
+#
+#        fig, axs = plt.subplots(
+#            1, 3, figsize=(29.7 * (1 / 2.54), 21 * (1 / 2.54)), sharey=True
+#        )
+#        axs[0].set_title("Original", fontsize=11, y=-0.2)
+#        im1 = axs[0].imshow(
+#            tile_data, vmin=-0.01, vmax=0.07, cmap="CMRmap", interpolation="nearest"
+#        )
+#        cb2 = plt.colorbar(im1, ax=[axs[0]], location="top")
+#
+#        axs[1].set_title("Decompressed", fontsize=11, y=-0.2)
+#        im2 = axs[1].imshow(
+#            tile_data_decompressed,
+#            vmin=-0.01,
+#            vmax=0.07,
+#            cmap="CMRmap",
+#            interpolation="nearest",
+#        )
+#        cb2 = plt.colorbar(im2, ax=[axs[1]], location="top")
+#
+#        axs[2].set_title("Relative Diff. [%]", fontsize=11, y=-0.2)
+#        im3 = axs[2].imshow(
+#            diff, vmin=-50, vmax=50, cmap="cool_r", interpolation="nearest"
+#        )
+#        cb2 = plt.colorbar(im3, ax=[axs[2]], location="top")
+#
+#        plt.ylim(0, 50)
+#        plt.xlim(0, 50)
+#        fig.suptitle(
+#            "Compressed file is 10% the size of original,\n100 epochs (4.52 min)",
+#            y=0.9,
+#            fontsize=16,
+#        )
+#
+#        fig.savefig(
+#            project_path + "/plotting/CFD" + str(ind) + ".jpg", bbox_inches="tight"
+#        )
 
 
 def plot(project_path, config):

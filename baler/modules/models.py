@@ -28,21 +28,16 @@ class AE(nn.Module):
 
         self.activations = {}
 
-        print("n_features")
-        print(n_features)
-        print("z_dim")
-        print(z_dim)
-        
         # encoder
-        self.en1 = nn.Linear(n_features, 200, dtype=torch.float32)
-        self.en2 = nn.Linear(200, 100, dtype=torch.float32)
-        self.en3 = nn.Linear(100, 50, dtype=torch.float32)
-        self.en4 = nn.Linear(50, z_dim, dtype=torch.float32)
+        self.en1 = nn.Linear(n_features, 400, dtype=torch.float32)
+        self.en2 = nn.Linear(400, 200, dtype=torch.float32)
+        self.en3 = nn.Linear(200, 100, dtype=torch.float32)
+        self.en4 = nn.Linear(100, z_dim, dtype=torch.float32)
         # decoder
-        self.de1 = nn.Linear(z_dim, 50, dtype=torch.float32)
-        self.de2 = nn.Linear(50, 100, dtype=torch.float32)
-        self.de3 = nn.Linear(100, 200, dtype=torch.float32)
-        self.de4 = nn.Linear(200, n_features, dtype=torch.float32)
+        self.de1 = nn.Linear(z_dim, 100, dtype=torch.float32)
+        self.de2 = nn.Linear(100, 200, dtype=torch.float32)
+        self.de3 = nn.Linear(200, 400, dtype=torch.float32)
+        self.de4 = nn.Linear(400, n_features, dtype=torch.float32)
 
         self.n_features = n_features
         self.z_dim = z_dim
@@ -158,7 +153,7 @@ class Conv_AE(nn.Module):
         super(Conv_AE, self).__init__(*args, **kwargs)
 
         self.q_z_mid_dim = 2000
-        self.q_z_output_dim = 72128
+        #self.q_z_output_dim = 72128
 
         # Encoder
 
@@ -178,7 +173,8 @@ class Conv_AE(nn.Module):
         self.flatten = nn.Flatten(start_dim=1)
         # Linear layers
         self.q_z_lin = nn.Sequential(
-            nn.Linear(self.q_z_output_dim, self.q_z_mid_dim),
+            #nn.Linear(self.q_z_output_dim, self.q_z_mid_dim),
+            nn.Linear(12960, self.q_z_mid_dim),
             nn.ReLU(),
             # nn.BatchNorm1d(self.q_z_output_dim),
             nn.Linear(self.q_z_mid_dim, z_dim),
@@ -192,7 +188,8 @@ class Conv_AE(nn.Module):
             nn.Linear(z_dim, self.q_z_mid_dim),
             nn.ReLU(),
             # nn.BatchNorm1d(self.q_z_output_dim),
-            nn.Linear(self.q_z_mid_dim, self.q_z_output_dim),
+            #nn.Linear(self.q_z_mid_dim, self.q_z_output_dim),
+            nn.Linear(self.q_z_mid_dim, 12960),
             nn.ReLU()
             # nn.BatchNorm1d(42720)
         )
@@ -220,7 +217,7 @@ class Conv_AE(nn.Module):
         # Dense
         out = self.p_x_lin(z)
         # Unflatten
-        out = out.view(out.size(0), 32, 49, 46)
+        out = out.view(out.size(0), 32, 45, 9)
         # Conv transpose
         out = self.p_x_conv(out)
         return out
@@ -229,3 +226,27 @@ class Conv_AE(nn.Module):
         z = self.encode(x)
         out = self.decode(z)
         return out
+
+    def get_hook(self, layer_name):
+        def hook(model, input, output):
+            self.activations[layer_name] = output.detach()
+        return hook
+
+    def get_layers(self) -> list:
+        return [self.en1, self.en2, self.en3, self.de1, self.de2, self.de3]
+
+    def store_hooks(self) -> list:
+        layers = self.get_layers()
+        hooks = []
+        for i in range(len(layers)):
+            hooks.append(layers[i].register_forward_hook(self.get_hook(str(i))))
+        return hooks
+
+    def get_activations(self) -> dict:
+        for kk in self.activations:
+            self.activations[kk] = F.leaky_relu(self.activations[kk])
+        return self.activations
+
+    def detach_hooks(self, hooks: list) -> None:
+        for hook in hooks:
+            hook.remove()

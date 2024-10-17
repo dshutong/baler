@@ -496,6 +496,7 @@ def decompress(model_path, input_path, model_name, config):
     normalization_features = loaded["normalization_features"]
     model_name = config.model_name
     latent_space_size = len(data[0,0,0])
+    print(latent_space_size)
     bs = config.batch_size
     model_dict = torch.load(str(model_path))
     number_of_columns = len(model_dict[list(model_dict.keys())[-1]])
@@ -515,7 +516,7 @@ def decompress(model_path, input_path, model_name, config):
     model.eval()
 
     # Load the data, convert to tensor and batch it to avoid memory leaks
-    data_tensor = torch.from_numpy(data)
+    data_tensor = torch.from_numpy(np.squeeze(data))
     data_dl = DataLoader(
         data_tensor,
         batch_size=bs,
@@ -528,8 +529,8 @@ def decompress(model_path, input_path, model_name, config):
     with torch.no_grad():
         for idx, data_batch in enumerate(tqdm(data_dl)):
             data_batch = data_batch.to(device)
-
-            out = model.decode(data_batch)
+            #print(data_batch.shape)
+            out = model.decode((data_batch))
             # Converting back to numpyarray
             out = detacher(out)
             if idx == 0:

@@ -6,6 +6,8 @@ interact.sh
 /data/*
 !/projects/*/config.json
 
+slurm-*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

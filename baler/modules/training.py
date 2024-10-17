@@ -59,7 +59,7 @@ def fit(
         optimizer.zero_grad()
 
         # Compute the predicted outputs from the input data
-        reconstructions = model(inputs)
+        reconstructions = model((inputs))
 
         # Compute how far off the prediction is
         loss, mse_loss, l1_loss = utils.mse_loss_l1(
@@ -276,13 +276,15 @@ def train(model, variables, train_data, test_data, project_path, config):
 
     end = time.time()
 
+    num = config.input_path.split("_")[-1][:-4]
+
     # Saving activations values
     if config.activation_extraction: 
         activations = diagnostics.dict_to_square_matrix(model.get_activations())
         model.detach_hooks(hooks)
-        np.save(project_path + "activations.npy", activations)
+        np.save(project_path + "activations_"+num+".npy", activations)
 
     print(f"{(end - start) / 60:.3} minutes")
-    np.save(project_path + "loss_data.npy", np.array([train_loss, val_loss]))
+    np.save(project_path + "loss_data_"+num+".npy", np.array([train_loss, val_loss]))
 
     return trained_model

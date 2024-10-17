@@ -46,7 +46,7 @@ def mse_loss_emd_l1(model_children, true_data, reconstructed_data, reg_param, va
     mse_loss = mse(reconstructed_data, true_data)
     wasserstein_distance_list = [
         wasserstein_distance(
-            true_data.detach().numpy()[i, :], reconstructed_data.detach().numpy()[i, :]
+            true_data.detach().cpu().numpy()[i, :], reconstructed_data.detach().cpu().numpy()[i, :]
         )
         for i in range(len(true_data))
     ]
