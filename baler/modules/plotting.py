@@ -85,14 +85,21 @@ def plot_1D(project_path, config):
     before_path = config.input_path
     after_path = project_path + "decompressed_output/decompressed.npz"
 
-    before = np.transpose(np.load(before_path)["data"])
-    after = np.transpose(np.load(after_path)["data"])
-    names = np.load(config.input_path)["names"]
+    before = np.transpose(np.load(before_path)["data"]).flatten()
+    after = np.transpose(np.load(after_path)["data"]).flatten()
+    #names = np.load(config.input_path)["names"]
 
-    index_to_cut = get_index_to_cut(3, 1e-6, before)
-    before = np.delete(before, index_to_cut, axis=1)
-    after = np.delete(after, index_to_cut, axis=1)
+    names = ['pt']
 
+    index_to_cut = get_index_to_cut(0, 1e-6, before)
+    before = np.delete(before, index_to_cut)
+    after = np.delete(after, index_to_cut)
+
+    before = before[np.newaxis,:]
+    after = after[np.newaxis,:]
+
+    print(before.shape)
+    print(after.shape)
     response = np.divide(np.subtract(after, before), before) * 100
     residual = np.subtract(after, before)
 
@@ -107,12 +114,14 @@ def plot_1D(project_path, config):
         ax2 = axsRight[0]
         ax4 = axsRight[1]
 
-        number_of_columns = len(names)
+        number_of_columns = before.shape[0]
+        print(number_of_columns)
 
         print("=== Plotting ===")
 
         for index, column in enumerate(tqdm(names)):
-            column_name = column.split(".")[-1]
+            #column_name = column.split(".")[-1]
+            column_name = column
             rms = np.sqrt(np.mean(np.square(response[index])))
             residual_RMS = np.sqrt(np.mean(np.square(residual[index])))
 
@@ -145,8 +154,8 @@ def plot_1D(project_path, config):
             ax1.set_ylabel("Counts", ha="right", y=1.0)
             ax1.set_yscale("log")
             ax1.legend(loc="best")
-            ax1.set_xlim(x_min - 0.1 * x_diff, x_max + 0.1 * x_diff)
-            ax1.set_ylim(ymin=1)
+            #ax1.set_xlim(x_min - 0.1 * x_diff, x_max + 0.1 * x_diff)
+            #ax1.set_ylim(ymin=1)
 
             data_bin_centers = bins_after[:-1] + (bins_after[1:] - bins_after[:-1]) / 2
             ax3.scatter(

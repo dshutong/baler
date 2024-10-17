@@ -277,6 +277,8 @@ def print_info(project_path, config):
     print(f"Compressed file size: {round(file_stats[1], 4)} MB\n")
     print(f"De-compressed file size: {round(file_stats[2], 4)} MB\n")
     print(f"Compression ratio: {round(file_stats[0] / file_stats[1], 4)}\n")
+    np.savez(project_path + "Compression_ratio.npz",round(file_stats[0] / file_stats[1], 4))
+
     print(
         f"The meta-data saved has a total size of: {round(sum(meta_data_stats),4)} MB\n"
     )

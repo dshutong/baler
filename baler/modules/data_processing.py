@@ -59,6 +59,7 @@ def load_model(model_object, model_path, n_features, z_dim):
         nn.Module: Returns a model object with the attributes of the model class, with the a selected state dictionary loaded into it.
     """
     device = helper.get_device()
+    print(n_features, z_dim)
     model = model_object(n_features, z_dim)
     model.to(device)
 
@@ -156,10 +157,15 @@ def renormalize_func(norm_data, min_list, range_list):
         ndarray: Array with the un-normalized values.
     """
     norm_data = np.array(norm_data)
+    print(norm_data.shape)
+    print(len(min_list))
+
     renormalized = [
         renormalize_std(norm_data, min_list[i], range_list[i])
         for i in range(len(min_list))
     ]
+    print(np.array(renormalized).shape)
+    print(len(renormalized))
     renormalized_full = [(renormalized[i][:, i]) for i in range(len(renormalized))]
     renormalized_full = np.array(renormalized_full).T
     return renormalized_full

@@ -1,13 +1,15 @@
 def set_config(c):
-    c.input_path = "data/example_CMS/example_CMS.npz"
-    # c.compression_ratio            = 2.0
+    #c.input_path = "data/example_CMS/example_CMS.npz"
+    c.input_path = '/users/dshutong/.energyflow/datasets/only_pt.npz'
+    #c.input_path = '/users/dshutong/.energyflow/datasets/pts_ys_etas_ids.npz'
+    c.compression_ratio            = 2.0
     c.number_of_columns = 24
     c.latent_space_size = 15
-    c.epochs = 25
+    c.epochs = 1000
     c.early_stopping = True
     c.early_stopping_patience = 100
     c.min_delta = 0
-    c.lr_scheduler = False
+    c.lr_scheduler = True
     c.lr_scheduler_patience = 100
     c.model_name = "AE"
     c.custom_norm = False
@@ -15,7 +17,7 @@ def set_config(c):
     c.reg_param = 0.001
     c.RHO = 0.05
     c.lr = 0.001
-    c.batch_size = 512
+    c.batch_size = 1024
     c.test_size = 0.15
     c.data_dimension = 1
     c.apply_normalization = True

@@ -215,6 +215,8 @@ def process(input_path, custom_norm, test_size, apply_normalization):
     loaded = np.load(input_path)
     data = loaded["data"]
     names = loaded["names"]
+    print(data.shape)
+    print(names)
     normalization_features = []
 
     normalization_features = data_processing.find_minmax(data)
@@ -361,8 +363,10 @@ def compress(model_path, config):
     try:
         print("compression ratio:", config.compression_ratio)
         if config.data_dimension == 1:
-            column_names = np.load(config.input_path)["names"]
-            number_of_columns = len(column_names)
+            #column_names = np.load(config.input_path)["names"]
+            #number_of_columns = len(column_names)
+            number_of_columns = data_before.shape[1]
+            print(number_of_columns)
             config.latent_space_size = int(
                 number_of_columns // config.compression_ratio
             )

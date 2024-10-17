@@ -29,13 +29,12 @@ class AE(nn.Module):
         # encoder
         self.en1 = nn.Linear(n_features, 200, dtype=torch.float64)
         self.en2 = nn.Linear(200, 100, dtype=torch.float64)
-        self.en3 = nn.Linear(100, 50, dtype=torch.float64)
-        self.en4 = nn.Linear(50, z_dim, dtype=torch.float64)
+        self.en3 = nn.Linear(100, z_dim, dtype=torch.float64)
+
         # decoder
-        self.de1 = nn.Linear(z_dim, 50, dtype=torch.float64)
-        self.de2 = nn.Linear(50, 100, dtype=torch.float64)
-        self.de3 = nn.Linear(100, 200, dtype=torch.float64)
-        self.de4 = nn.Linear(200, n_features, dtype=torch.float64)
+        self.de1 = nn.Linear(z_dim, 100, dtype=torch.float64)
+        self.de2 = nn.Linear(100, 200, dtype=torch.float64)
+        self.de3 = nn.Linear(200, n_features, dtype=torch.float64)
 
         self.n_features = n_features
         self.z_dim = z_dim
@@ -43,19 +42,21 @@ class AE(nn.Module):
     def encode(self, x):
         h1 = F.leaky_relu(self.en1(x))
         h2 = F.leaky_relu(self.en2(h1))
-        h3 = F.leaky_relu(self.en3(h2))
-        return self.en4(h3)
+        z = self.en3(h2)
+        return z
 
     def decode(self, z):
-        h4 = F.leaky_relu(self.de1(z))
-        h5 = F.leaky_relu(self.de2(h4))
-        h6 = F.leaky_relu(self.de3(h5))
-        out = self.de4(h6)
+        h8 = F.leaky_relu(self.de1(z))
+        h9 = F.leaky_relu(self.de2(h8))
+        out = self.de3(h9)
+
         return out
 
     def forward(self, x):
         z = self.encode(x)
         return self.decode(z)
+
+
 
 
 class AE_Dropout_BN(nn.Module):
