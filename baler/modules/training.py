@@ -321,11 +321,13 @@ def train(model, variables, train_data, test_data, project_path, config):
             early_stopping(val_epoch_loss)
             if early_stopping.early_stop:
                 break
+        num = config.input_path.split("_")[-1][:-4]
+        radio = config.compression_ratio
 
         ## Implementation to save models & values after every N epochs, where N is stored in 'intermittent_saving_patience':
         if intermittent_model_saving:
             if epoch % intermittent_saving_patience == 0:
-                path = os.path.join(project_path, f"model_{epoch}.pt")
+                path = os.path.join(project_path, f"model_{epoch}"+"_"+str(num)+"_"+str(radio)+".pt")
                 helper.model_saver(model, path)
 
     end = time.time()
@@ -334,15 +336,15 @@ def train(model, variables, train_data, test_data, project_path, config):
     if config.activation_extraction:
         activations = diagnostics.dict_to_square_matrix(model.get_activations())
         model.detach_hooks(hooks)
-        np.save(os.path.join(project_path, "activations.npy"), activations)
+        np.save(os.path.join(project_path, "activations"+"_"+str(num)+"_"+str(radio)+".npy"), activations)
 
     print(f"{(end - start) / 60:.3} minutes")
     np.save(
-        os.path.join(project_path, "loss_data.npy"), np.array([train_loss, val_loss])
+        os.path.join(project_path, "loss_data"+"_"+str(num)+"_"+str(radio)+".npy"), np.array([train_loss, val_loss])
     )
 
     if config.model_type == "convolutional":
         final_layer = model.get_final_layer_dims()
-        np.save(os.path.join(project_path, "final_layer.npy"), np.array(final_layer))
+        np.save(os.path.join(project_path, "final_layer"+"_"+str(num)+"_"+str(radio)+".npy"), np.array(final_layer))
 
     return trained_model

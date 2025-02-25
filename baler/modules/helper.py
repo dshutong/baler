@@ -294,7 +294,15 @@ def process(
     normalization features.
     """
     loaded = np.load(input_path)
-    data = loaded["data"]
+
+    data = loaded["X"][:,:,:3]
+    names = loaded["y"]
+
+    sort_indices = np.argsort(data[:, :, 0], axis=1)
+    sorted_data = np.take_along_axis(data, sort_indices[:, :, np.newaxis], axis=1)
+    data = sorted_data[:,::-1]
+    data = data.transpose(0,2,1)
+    data = np.array([data[i,:,:].flatten() for i in range(data.shape[0])])
 
     if verbose:
         print("Original Dataset Shape - ", data.shape)
@@ -489,7 +497,14 @@ def compress(model_path, config):
 
     # Loads the data and applies normalization if config.apply_normalization = True
     loaded = np.load(config.input_path)
-    data_before = loaded["data"]
+    data = loaded["X"][:,:,:3]
+
+    sort_indices = np.argsort(data[:, :, 0], axis=1)
+    sorted_data = np.take_along_axis(data, sort_indices[:, :, np.newaxis], axis=1)
+    data = sorted_data[:,::-1]
+    data = data.transpose(0,2,1)
+    data_before = np.array([data[i,:,:].flatten() for i in range(data.shape[0])])
+
     original_shape = data_before.shape
 
     if hasattr(config, "convert_to_blocks") and config.convert_to_blocks:
@@ -506,8 +521,10 @@ def compress(model_path, config):
     try:
         n_features = 0
         if config.data_dimension == 1:
-            column_names = np.load(config.input_path)["names"]
-            number_of_columns = len(column_names)
+            #column_names = np.load(config.input_path)["names"]
+            number_of_columns = data_before.shape[1]
+            #column_names = np.load(config.input_path)["y"]
+            #number_of_columns = len(column_names)
             config.latent_space_size = ceil(
                 number_of_columns / config.compression_ratio
             )
@@ -647,9 +664,13 @@ def decompress(
     names = loaded["names"]
     normalization_features = loaded["normalization_features"]
 
+    num = config.input_path.split("_")[-1][:-4]
+    radio = config.compression_ratio
+
     if config.model_type == "convolutional":
         final_layer_details = np.load(
-            os.path.join(output_path, "training", "final_layer.npy"), allow_pickle=True
+            os.path.join(output_path, "training", "final_layer"
+            +"_"+str(num)+"_"+str(radio)+".npy"), allow_pickle=True
         )
 
     if config.save_error_bounded_deltas:
@@ -729,6 +750,8 @@ def decompress(
         decompressed = decompressed.reshape(
             (len(decompressed), original_shape[1], original_shape[2])
         )
+    num_phi = int(decompressed.shape[1]//3)
+    decompressed[:, -num_phi:] = decompressed[:, -num_phi:] % (2 * np.pi)
 
     return decompressed, names, normalization_features
 
@@ -808,7 +831,11 @@ def perform_hls4ml_conversion(output_path, config):
 
     import hls4ml
 
-    model_path = os.path.join(output_path, "compressed_output", "model.pt")
+    num = config.input_path.split("_")[-1][:-4]
+    radio = config.compression_ratio
+
+    model_path = os.path.join(output_path, "compressed_output", "model"
+            +"_"+str(num)+"_"+str(radio)+".pt")
 
     model_object = data_processing.initialise_model(config.model_name)
     model = data_processing.load_model(

@@ -178,9 +178,13 @@ def perform_training(output_path, config, verbose: bool):
     if verbose:
         print("Training complete")
 
+    num = config.input_path.split("_")[-1][:-4]
+    radio = config.compression_ratio
+
     if config.apply_normalization:
         np.save(
-            os.path.join(training_path, "normalization_features.npy"),
+            os.path.join(training_path, "normalization_features"
+            +"_"+str(num)+"_"+str(radio)+".npy"),
             normalization_features,
         )
         if verbose:
@@ -191,12 +195,15 @@ def perform_training(output_path, config, verbose: bool):
     if config.separate_model_saving:
         helper.encoder_decoder_saver(
             trained_model,
-            os.path.join(output_path, "compressed_output", "encoder.pt"),
-            os.path.join(output_path, "compressed_output", "decoder.pt"),
+            os.path.join(output_path, "compressed_output", "encoder"
+            +"_"+str(num)+"_"+str(radio)+".pt"),
+            os.path.join(output_path, "compressed_output", "decoder"
+            +"_"+str(num)+"_"+str(radio)+".pt"),
         )
     else:
         helper.model_saver(
-            trained_model, os.path.join(output_path, "compressed_output", "model.pt")
+            trained_model, os.path.join(output_path, "compressed_output", "model"
+            +"_"+str(num)+"_"+str(radio)+".pt")
         )
     if verbose:
         print(
@@ -207,14 +214,17 @@ def perform_training(output_path, config, verbose: bool):
         print(model.type)
 
 
-def perform_diagnostics(project_path, verbose: bool):
+def perform_diagnostics(project_path, verbose: bool, config):
+    num = config.input_path.split("_")[-1][:-4]
+    radio = config.compression_ratio
     output_path = os.path.join(project_path, "plotting")
     if verbose:
         print("Performing diagnostics")
         print(f"Saving plots to {output_path}")
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-    input_path = os.path.join(project_path, "training", "activations.npy")
+    input_path = os.path.join(project_path, "training", "activations"
+            +"_"+str(num)+"_"+str(radio)+".npy")
     helper.diagnose(input_path, output_path)
 
 
@@ -230,8 +240,13 @@ def perform_plotting(output_path, config, verbose: bool):
     if verbose:
         print("Plotting...")
         print(f"Saving plots to {output_path}")
+    
+    num = config.input_path.split("_")[-1][:-4]
+    radio = config.compression_ratio
+
     helper.loss_plotter(
-        os.path.join(output_path, "training", "loss_data.npy"), output_path, config
+        os.path.join(output_path, "training", "loss_data"
+    +"_"+str(num)+"_"+str(radio)+".npy"), output_path, config
     )
     helper.plotter(output_path, config)
 
@@ -258,9 +273,13 @@ def perform_compression(output_path, config, verbose: bool):
     start = time.time()
     normalization_features = []
 
+    num = config.input_path.split("_")[-1][:-4]
+    radio = config.compression_ratio
+
     if config.apply_normalization:
         normalization_features = np.load(
-            os.path.join(output_path, "training", "normalization_features.npy")
+            os.path.join(output_path, "training", "normalization_features"
+            +"_"+str(num)+"_"+str(radio)+".npy")
         )
     if config.separate_model_saving:
         (
@@ -269,7 +288,8 @@ def perform_compression(output_path, config, verbose: bool):
             error_bound_deltas,
             error_bound_index,
         ) = helper.compress(
-            model_path=os.path.join(output_path, "compressed_output", "encoder.pt"),
+            model_path=os.path.join(output_path, "compressed_output", "encoder"
+            +"_"+str(num)+"_"+str(radio)+".pt"),
             config=config,
         )
     else:
@@ -279,7 +299,8 @@ def perform_compression(output_path, config, verbose: bool):
             error_bound_deltas,
             error_bound_index,
         ) = helper.compress(
-            model_path=os.path.join(output_path, "compressed_output", "model.pt"),
+            model_path=os.path.join(output_path, "compressed_output", "model"
+            +"_"+str(num)+"_"+str(radio)+".pt"),
             config=config,
         )
 
@@ -287,7 +308,7 @@ def perform_compression(output_path, config, verbose: bool):
 
     print("Compression took:", f"{(end - start) / 60:.3} minutes")
 
-    names = np.load(config.input_path)["names"]
+    names = np.load(config.input_path)["y"]
 
     if config.extra_compression:
         if verbose:
@@ -296,7 +317,8 @@ def perform_compression(output_path, config, verbose: bool):
                 f"Saving compressed file to {os.path.join(output_path, 'compressed_output', 'compressed.npz')}"
             )
         np.savez_compressed(
-            os.path.join(output_path, "compressed_output", "compressed.npz"),
+            os.path.join(output_path, "compressed_output", "compressed"
+            +"_"+str(num)+"_"+str(radio)+".npz"),
             data=compressed,
             names=names,
             normalization_features=normalization_features,
@@ -308,7 +330,8 @@ def perform_compression(output_path, config, verbose: bool):
                 f"Saving compressed file to {os.path.join(output_path, 'compressed_output', 'compressed.npz')}"
             )
         np.savez(
-            os.path.join(output_path, "compressed_output", "compressed.npz"),
+            os.path.join(output_path, "compressed_output", "compressed"
+            +"_"+str(num)+"_"+str(radio)+".npz"),
             data=compressed,
             names=names,
             normalization_features=normalization_features,
@@ -321,12 +344,14 @@ def perform_compression(output_path, config, verbose: bool):
             os.path.join(
                 output_path,
                 "compressed_output",
-                "compressed_batch_index_metadata.npz.gz",
+                "compressed_batch_index_metadata"
+            +"_"+str(num)+"_"+str(radio)+".npz.gz",
             ),
             "w",
         )
         f_deltas = gzip.GzipFile(
-            os.path.join(output_path, "compressed_output", "compressed_deltas.npz.gz"),
+            os.path.join(output_path, "compressed_output", "compressed_deltas"
+            +"_"+str(num)+"_"+str(radio)+".npz.gz"),
             "w",
         )
         np.save(file=f_deltas, arr=error_bound_deltas)
@@ -351,20 +376,27 @@ def perform_decompression(output_path, config, verbose: bool):
     """
     print("Decompressing...")
 
+    num = config.input_path.split("_")[-1][:-4]
+    radio = config.compression_ratio
+
     start = time.time()
     model_name = config.model_name
-    data_before = np.load(config.input_path)["data"]
+    data_before = np.load(config.input_path)["X"]
     if config.separate_model_saving:
         decompressed, names, normalization_features = helper.decompress(
-            model_path=os.path.join(output_path, "compressed_output", "decoder.pt"),
-            input_path=os.path.join(output_path, "compressed_output", "compressed.npz"),
+            model_path=os.path.join(output_path, "compressed_output", "decoder"
+            +"_"+str(num)+"_"+str(radio)+".pt"),
+            input_path=os.path.join(output_path, "compressed_output", "compressed"
+            +"_"+str(num)+"_"+str(radio)+".npz"),
             input_path_deltas=os.path.join(
-                output_path, "compressed_output", "compressed_deltas.npz.gz"
+                output_path, "compressed_output", "compressed_deltas"
+            +"_"+str(num)+"_"+str(radio)+".npz.gz"
             ),
             input_batch_index=os.path.join(
                 output_path,
                 "compressed_output",
-                "compressed_batch_index_metadata.npz.gz",
+                "compressed_batch_index_metadata"
+            +"_"+str(num)+"_"+str(radio)+".npz.gz",
             ),
             model_name=model_name,
             config=config,
@@ -373,15 +405,19 @@ def perform_decompression(output_path, config, verbose: bool):
         )
     else:
         decompressed, names, normalization_features = helper.decompress(
-            model_path=os.path.join(output_path, "compressed_output", "model.pt"),
-            input_path=os.path.join(output_path, "compressed_output", "compressed.npz"),
+            model_path=os.path.join(output_path, "compressed_output", "model"
+            +"_"+str(num)+"_"+str(radio)+".pt"),
+            input_path=os.path.join(output_path, "compressed_output", "compressed"
+            +"_"+str(num)+"_"+str(radio)+".npz"),
             input_path_deltas=os.path.join(
-                output_path, "compressed_output", "compressed_deltas.npz.gz"
+                output_path, "compressed_output", "compressed_deltas"
+            +"_"+str(num)+"_"+str(radio)+".npz.gz"
             ),
             input_batch_index=os.path.join(
                 output_path,
                 "compressed_output",
-                "compressed_batch_index_metadata.npz.gz",
+                "compressed_batch_index_metadata"
+            +"_"+str(num)+"_"+str(radio)+".npz.gz",
             ),
             model_name=model_name,
             config=config,
@@ -410,7 +446,8 @@ def perform_decompression(output_path, config, verbose: bool):
     if config.apply_normalization:
         print("Un-normalizing...")
         normalization_features = np.load(
-            os.path.join(output_path, "training", "normalization_features.npy"),
+            os.path.join(output_path, "training", "normalization_features"
+            +"_"+str(num)+"_"+str(radio)+".npy"),
         )
         if verbose:
             print(
@@ -444,13 +481,15 @@ def perform_decompression(output_path, config, verbose: bool):
                 f"Saving decompressed file to {os.path.join(output_path, 'decompressed_output', 'decompressed.npz')}"
             )
         np.savez_compressed(
-            os.path.join(output_path, "decompressed_output", "decompressed.npz"),
+            os.path.join(output_path, "decompressed_output", "decompressed"
+            +"_"+str(num)+"_"+str(radio)+".npz"),
             data=decompressed,
             names=names,
         )
     else:
         np.savez(
-            os.path.join(output_path, "decompressed_output", "decompressed.npz"),
+            os.path.join(output_path, "decompressed_output", "decompressed"
+            +"_"+str(num)+"_"+str(radio)+".npz"),
             data=decompressed,
             names=names,
         )
@@ -472,14 +511,22 @@ def print_info(output_path, config):
     decompressed_path = os.path.join(output_path, "decompressed_output")
     training_path = os.path.join(output_path, "training")
 
-    model = os.path.join(compressed_path, "model.pt")
-    compressed = os.path.join(compressed_path, "compressed.npz")
-    decompressed = os.path.join(decompressed_path, "decompressed.npz")
+    num = config.input_path.split("_")[-1][:-4]
+    radio = config.compression_ratio
+
+    model = os.path.join(compressed_path, "model"
+            +"_"+str(num)+"_"+str(radio)+".pt")
+    compressed = os.path.join(compressed_path, "compressed"
+            +"_"+str(num)+"_"+str(radio)+".npz")
+    decompressed = os.path.join(decompressed_path, "decompressed"
+            +"_"+str(num)+"_"+str(radio)+".npz")
 
     meta_data = [
         model,
-        os.path.join(training_path, "loss_data.npy"),
-        os.path.join(training_path, "normalization_features.npy"),
+        os.path.join(training_path, "loss_data"
+            +"_"+str(num)+"_"+str(radio)+".npy"),
+        os.path.join(training_path, "normalization_features"
+            +"_"+str(num)+"_"+str(radio)+".npy"),
     ]
 
     meta_data_stats = [

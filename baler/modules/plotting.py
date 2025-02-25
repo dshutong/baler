@@ -53,7 +53,12 @@ def loss_plot(path_to_loss_data, output_path, config):
     plt.yscale("log")
     plt.ylabel("Loss")
     plt.legend(loc="best")
-    plt.savefig(os.path.join(output_path, "plotting", "Loss_plot.pdf"))
+    
+    num = config.input_path.split("_")[-1][:-4]
+    radio = config.compression_ratio
+
+    plt.savefig(os.path.join(output_path, "plotting", "Loss_plot"
+            +"_"+str(num)+"_"+str(radio)+".pdf"))
     # plt.show()
 
 
@@ -77,8 +82,7 @@ def plot_box_and_whisker(names, residual, pdf):
     """Plots Box and Whisker plots of 1D data
 
     Args:
-        project_path (string): The path to the project directory
-        config (dataclass): The config class containing attributes set in the config file
+
     """
     column_names = [i.split(".")[-1] for i in names]
 
@@ -107,22 +111,40 @@ def plot_1D(output_path: str, config):
         output_path (path): The path to the project directory
         config (dataclass): The config class containing attributes set in the config file
     """
+    num = config.input_path.split("_")[-1][:-4]
+    radio = config.compression_ratio
 
     before_path = config.input_path
-    after_path = os.path.join(output_path, "decompressed_output", "decompressed.npz")
+    after_path = os.path.join(output_path, "decompressed_output", "decompressed"
+            +"_"+str(num)+"_"+str(radio)+".npz")
 
-    before = np.transpose(np.load(before_path)["data"])
-    after = np.transpose(np.load(after_path)["data"])
-    names = np.load(config.input_path)["names"]
+    before = np.load(before_path)["X"][:,:,:3]
+    sort_indices = np.argsort(before[:, :, 0], axis=1)
+    sorted_data = np.take_along_axis(before, sort_indices[:, :, np.newaxis], axis=1)
+    before = sorted_data[:,::-1]
+    print(before.shape)
+    after = np.load(after_path)["data"]
+    names = ["pt","y","phi"]
+    names_num = len(names)
+    p_num = before.shape[1]
 
-    index_to_cut = get_index_to_cut(3, 1e-6, before)
-    before = np.delete(before, index_to_cut, axis=1)
-    after = np.delete(after, index_to_cut, axis=1)
+    print(after.shape)
+    before = np.array([before[:,:,i].flatten() for i in range(names_num)])
+    #after_split = np.split(after, names_num, axis=1)
+    #after = np.stack(after_split, axis=2)
+    after = np.array([after[:,i*p_num:(i+1)*p_num].flatten() for i in range(names_num)])
+
+    #after = np.array([after[:,:,i].flatten() for i in range(names_num)])
+    print(after.shape)
+
+    index_to_cut = get_index_to_cut(0, 0.5, before)
+    before = np.delete(before, index_to_cut,axis=1)
+    after = np.delete(after, index_to_cut,axis=1)
 
     response = np.divide(np.subtract(after, before), before) * 100
     residual = np.subtract(after, before)
 
-    with PdfPages(os.path.join(output_path, "plotting", "comparison.pdf")) as pdf:
+    with PdfPages(os.path.join(output_path, "plotting", "comparison"+"_"+str(num)+"_"+str(radio)+".pdf")) as pdf:
         plot_box_and_whisker(names, residual, pdf)
         fig = plt.figure(constrained_layout=True, figsize=(10, 4))
         subfigs = fig.subfigures(1, 2, wspace=0.07, width_ratios=[1, 1])
@@ -194,7 +216,7 @@ def plot_1D(output_path: str, config):
                 response[index], bins=np.arange(-20, 20, 0.1)
             )
             ax2.hist(
-                bins_response[:-1],
+               bins_response[:-1],
                 bins_response,
                 weights=counts_response,
                 label="Response",
