@@ -1,3 +1,4 @@
+slurm*
 /workspaces/*
 !/workspaces/public_datasets
 !workspaces/CMS_project_v1/CMS_project_v1/config/CMS_project_v1_config.py

@@ -124,15 +124,16 @@ def plot_1D(output_path: str, config):
     before = sorted_data[:,::-1]
     print(before.shape)
     after = np.load(after_path)["data"]
+    print("after shape:",after.shape)
     names = ["pt","y","phi"]
     names_num = len(names)
     p_num = before.shape[1]
 
-    print(after.shape)
     before = np.array([before[:,:,i].flatten() for i in range(names_num)])
+    after = np.array([after[:,:,i].flatten() for i in range(names_num)])
     #after_split = np.split(after, names_num, axis=1)
     #after = np.stack(after_split, axis=2)
-    after = np.array([after[:,i*p_num:(i+1)*p_num].flatten() for i in range(names_num)])
+    #after = np.array([after[:,i*p_num:(i+1)*p_num].flatten() for i in range(names_num)])
 
     #after = np.array([after[:,:,i].flatten() for i in range(names_num)])
     print(after.shape)

@@ -298,6 +298,12 @@ def process(
     data = loaded["X"][:,:,:3]
     names = loaded["y"]
 
+# offset
+    
+    mask = data[:, :, 0] != 0
+    data[mask] += 10
+# order
+
     sort_indices = np.argsort(data[:, :, 0], axis=1)
     sorted_data = np.take_along_axis(data, sort_indices[:, :, np.newaxis], axis=1)
     data = sorted_data[:,::-1]
@@ -498,6 +504,12 @@ def compress(model_path, config):
     # Loads the data and applies normalization if config.apply_normalization = True
     loaded = np.load(config.input_path)
     data = loaded["X"][:,:,:3]
+
+# offset
+
+    mask = data[:, :, 0] != 0
+    data[mask] += 10
+# order
 
     sort_indices = np.argsort(data[:, :, 0], axis=1)
     sorted_data = np.take_along_axis(data, sort_indices[:, :, np.newaxis], axis=1)
@@ -748,10 +760,23 @@ def decompress(
 
     if config.data_dimension == 2 and config.model_type == "dense":
         decompressed = decompressed.reshape(
-            (len(decompressed), original_shape[1], original_shape[2])
-        )
-    num_phi = int(decompressed.shape[1]//3)
-    decompressed[:, -num_phi:] = decompressed[:, -num_phi:] % (2 * np.pi)
+            (len(decompressed), original_shape[1], original_shape[2]))
+
+# shape back to (2M, 150, 3)
+    print(decompressed.shape)
+    p_num = decompressed.shape[1]//3
+    decompressed = decompressed.reshape(decompressed.shape[0],3,-1)
+    decompressed = decompressed.transpose(0,2,1)
+    print(decompressed.shape)
+# load original data
+    o_loaded = np.load(config.input_path)
+    o_data = o_loaded["X"][:,:,:3]
+# offset
+    mask = o_data[:, :, 0] != 0
+    decompressed[mask] -= 10
+    decompressed[~mask] = 0
+#phi fixed
+    decompressed[:,:,2] = decompressed[:,:,2] % (2 * np.pi)
 
     return decompressed, names, normalization_features
 
